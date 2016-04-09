@@ -9,6 +9,8 @@ extern "C"
 };
 
 #include <vector>
+#include <assert.h>
+#include <fstream>
 
 typedef unsigned int uint;
 
@@ -21,7 +23,7 @@ class Audio {
 
 		typedef int16_t type;
 		const type* data = (type*)frame->data[0];
-		for (int i = 0; i < frame->nb_samples/2; i++) {
+		for (int i = 0; i < frame->nb_samples; i++) {
 			samples.push_back(double(data[i]) / INT16_MAX);
 		}
 	}
@@ -132,5 +134,118 @@ public :
 		av_free(frame);
 		avcodec_close(codecContext);
 		avformat_close_input(&formatContext);
+	}
+
+	void write(const char *filename)
+	{
+		av_register_all();
+
+		AVCodec *codec;
+		AVCodecContext *c = NULL;
+		AVFrame *frame;
+		AVPacket pkt;
+		int i, j, k, ret, got_output;
+		int buffer_size;
+		uint16_t *samplesBuff;
+		float t, tincr;
+
+		codec = avcodec_find_encoder(AV_CODEC_ID_MP3);
+		if (!codec) {
+			fprintf(stderr, "Codec not found\n");
+			return;
+		}
+		c = avcodec_alloc_context3(codec);
+		if (!c) {
+			fprintf(stderr, "Could not allocate audio codec context\n");
+			return;
+		}
+		
+		// Encoding parameters
+		c->bit_rate = pow(2,18);
+		c->sample_fmt = AV_SAMPLE_FMT_S16P;
+		c->sample_rate = sampleRate;
+		c->channel_layout = AV_CH_LAYOUT_MONO;
+		c->channels = 1;
+
+		// Opening the codec
+		if (avcodec_open2(c, codec, NULL) < 0) {
+			fprintf(stderr, "Could not open codec\n");
+			return;
+		}
+
+		std::fstream outFile(filename, std::ios::out | std::ios::binary);
+		if (!outFile.is_open()) {
+			std::cerr << "can't write " << filename << std::endl;
+			return;
+		}
+
+		/* frame containing input raw audio */
+		frame = av_frame_alloc();
+		if (!frame) {
+			fprintf(stderr, "Could not allocate audio frame\n");
+			return;
+		}
+		frame->nb_samples = c->frame_size;
+		frame->format = c->sample_fmt;
+		frame->channel_layout = c->channel_layout;
+
+		// the codec gives us the frame size, in samples,
+		// we calculate the size of the samples buffer in bytes
+		buffer_size = av_samples_get_buffer_size(NULL, c->channels, c->frame_size,
+			c->sample_fmt, 0);
+		if (buffer_size < 0) {
+			fprintf(stderr, "Could not get sample buffer size\n");
+			return;
+		}
+		std::vector<char> buffer(buffer_size);
+		samplesBuff = (uint16_t*)buffer.data();
+		if (!samplesBuff) {
+			fprintf(stderr, "Could not allocate %d bytes for samples buffer\n",
+				buffer_size);
+			return;
+		}
+		
+		// setup the data pointers in the AVFrame
+		ret = avcodec_fill_audio_frame(frame, c->channels, c->sample_fmt,
+			(const uint8_t*)samplesBuff, buffer_size, 0);
+		if (ret < 0) {
+			fprintf(stderr, "Could not setup audio frame\n");
+			return;
+		}
+
+		for (int i = 0; i <= samples.size() - c->frame_size; i+= c->frame_size ) {
+			av_init_packet(&pkt);
+			pkt.data = NULL; // packet data will be allocated by the encoder
+			pkt.size = 0;
+			for (int j = 0; j < c->frame_size; j++) {
+				samplesBuff[j] = (int)(samples[i+j] * INT16_MAX);
+			}
+			// encode the samples
+			ret = avcodec_encode_audio2(c, &pkt, frame, &got_output);
+			if (ret < 0) {
+				fprintf(stderr, "Error encoding audio frame\n");
+				exit(1);
+			}
+			if (got_output) {
+				outFile.write((char*)pkt.data, pkt.size);
+				av_packet_unref(&pkt);
+			}
+		}
+		// get the delayed frames
+		for (got_output = 1; got_output; ) {
+			ret = avcodec_encode_audio2(c, &pkt, NULL, &got_output);
+			if (ret < 0) {
+				fprintf(stderr, "Error encoding frame\n");
+				exit(1);
+			}
+			if (got_output) {
+				outFile.write((char*)pkt.data, pkt.size);
+				av_packet_unref(&pkt);
+			}
+		}
+		outFile.close();
+		av_frame_free(&frame);
+		avcodec_close(c);
+		av_free(c);
 	}
 };
