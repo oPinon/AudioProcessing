@@ -18,13 +18,25 @@ typedef unsigned int uint;
 class Audio {
 
 	// append a frame to the samples
-	// HACK : change type
-	void addFrame(const AVFrame* frame) {
+	void addFrame(const AVFrame* frame, AVSampleFormat format) {
 
-		typedef int16_t type;
-		const type* data = (type*)frame->data[0];
-		for (int i = 0; i < frame->nb_samples; i++) {
-			samples.push_back(double(data[i]) / INT16_MAX);
+		switch (format) {
+		case AV_SAMPLE_FMT_S16 :
+		case AV_SAMPLE_FMT_S16P: {
+			const uint16_t* data = (uint16_t*)frame->data[0];
+			for (int i = 0; i < frame->nb_samples; i++) {
+				samples.push_back(double(data[i]) / INT16_MAX);
+			}
+			break;
+		}
+		case AV_SAMPLE_FMT_FLT :
+		case AV_SAMPLE_FMT_FLTP: {
+			const float* data = (float*)frame->data[0];
+			for (int i = 0; i < frame->nb_samples; i++) {
+				samples.push_back(double(data[i]) / 1);
+			}
+			break;
+		}
 		}
 	}
 
@@ -32,6 +44,8 @@ public :
 
 	std::vector<double> samples;
 	uint sampleRate;
+
+	Audio() : sampleRate(44100) {}
 
 	// reading an audio file
 	// based on http://www.gamedev.net/topic/624876-how-to-read-an-audio-file-with-ffmpeg-in-c/?view=findpost&p=4940299
@@ -104,7 +118,7 @@ public :
 
 						// We now have a fully decoded audio frame
 						// append it to the audio data
-						addFrame(frame);
+						addFrame(frame, codecContext->sample_fmt);
 					}
 					else {
 						packet.size = 0;
@@ -126,7 +140,7 @@ public :
 			while (avcodec_decode_audio4(codecContext, frame, &gotFrame, &packet) >= 0 && gotFrame)
 			{
 				// We now have a fully decoded audio frame
-				addFrame(frame);
+				addFrame(frame, codecContext->sample_fmt);
 			}
 		}
 
@@ -144,10 +158,9 @@ public :
 		AVCodecContext *c = NULL;
 		AVFrame *frame;
 		AVPacket pkt;
-		int i, j, k, ret, got_output;
+		int ret, got_output;
 		int buffer_size;
 		uint16_t *samplesBuff;
-		float t, tincr;
 
 		codec = avcodec_find_encoder(AV_CODEC_ID_MP3);
 		if (!codec) {
