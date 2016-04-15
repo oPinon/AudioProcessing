@@ -32,4 +32,6 @@ public :
 	Audio(char* fileName);
 
 	void write(const char *filename);
+
+	void spectrogram(char* fileName, int fftSize = 512);
 };

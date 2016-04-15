@@ -17,7 +17,7 @@ void Audio::addFrame(const AVFrame* frame, AVSampleFormat format) {
 	case AV_SAMPLE_FMT_S16: // TODO : s16 .wav ?
 	case AV_SAMPLE_FMT_S16P: {
 		const int16_t* data = (int16_t*)frame->data[0];
-		const int16_t* data2 = (int16_t*)frame->data[1];
+		const int16_t* data2 = (int16_t*)frame->data[frame->channels == 2 ? 1 : 0];
 		for (int i = 0; i < frame->nb_samples; i++) {
 			samples.push_back(
 				// averating the 2 channels
