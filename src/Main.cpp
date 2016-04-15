@@ -6,7 +6,8 @@
 int main() {
 
 	vocoder(
-		Audio("../../data/src.mp3"),
-		Audio("../../data/sawtooth.mp3")
+		Audio("../../data/voice.mp3"),
+		Audio("../../data/sawtooth.mp3"),
+		256
 	).write("../../data/dst.mp3");
 }
