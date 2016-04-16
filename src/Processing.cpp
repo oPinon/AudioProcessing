@@ -124,17 +124,17 @@ Audio vocoder(const Audio& modulator, const Audio& frequencies, int nbBands) {
 	return dst;
 }
 
-void Audio::spectrogram(char* fileName, int fftSize) {
+cv::Mat spect(const std::vector<double>& samples, int fftSize) {
 
 	// FFT parameters
 	auto cfg = kiss_fft_alloc(fftSize, false, 0, 0);
 
 	// Destination image
-	int nbFFT = this->samples.size() / fftSize * 2 - 1;
+	int nbFFT = samples.size() / fftSize * 2 - 1;
 	cv::Mat dst(cv::Size(nbFFT, fftSize / 2), CV_64FC1);
 	double* dstP = (double*)dst.data;
 
-	for (int i = 0; i < this->samples.size() - fftSize; i += fftSize / 2) {
+	for (int i = 0; i < samples.size() - fftSize; i += fftSize / 2) {
 
 		// temporal input (weighted)
 		std::vector<kiss_fft_cpx> input(fftSize), output(fftSize);
@@ -166,10 +166,17 @@ void Audio::spectrogram(char* fileName, int fftSize) {
 		}
 	}
 
+	return dst;
+}
+
+void Audio::spectrogram(char* fileName, int fftSize) const {
+
+	cv::Mat dst = spect(this->samples, fftSize);
+
 	// Tuning and colormaping the image for display
 	cv::pow(dst, 0.3, dst);
 	//cv::normalize(dst, dst, 0, 1, cv::NORM_MINMAX);
-	dstP = (double*)dst.data;
+	double* dstP = (double*)dst.data;
 	cv::Mat dstCol(dst.size(), CV_8UC3);
 	for (int i = 0; i < dstCol.size().width*dstCol.size().height; i++) {
 
@@ -199,3 +206,80 @@ void Audio::spectrogram(char* fileName, int fftSize) {
 	// writing to file
 	cv::imwrite(fileName, dstCol);
 }
+
+// TODO : clean
+int Audio::bpm() const {
+
+	// computing the spectogram
+	int fftSize = 512;
+	cv::Mat spec = spect(samples, fftSize);
+	//cv::resize(spec, spec, cv::Size(512, fftSize/2), 0, 0, cv::INTER_AREA);
+	double* specP = (double*)spec.data;
+	int w = spec.size().width, h = spec.size().height;
+
+	// correlation bewtween each frame and the next ones
+	int cSize = 512;
+	cv::Mat dst(cv::Size(w, cSize), CV_64FC1);
+	double* dstP = (double*)dst.data;
+	double minV = INFINITY; int start = 0, end = 0;
+	for (int i = 0; i < w; i++) {
+		for (int j = i + 1; j < min(w,i+cSize+1); j++) {
+			double dist = 0;
+			for (int k = 0; k < h; k++) {
+				double diff = specP[k*w + i] - specP[k*w + j];
+				dist += diff*diff;
+			}
+			if (dist < minV && (j-i > 32)) {
+				minV = dist;
+				start = i; end = j;
+			}
+			dstP[(j-i-1)*w + i] = sqrt(dist/h);
+		}
+	}
+	//int gSize = 65;
+	cv::Mat periods;
+	cv::resize(dst, periods, cv::Size(1, dst.size().height), 0, 0, cv::INTER_AREA);
+	//cv::GaussianBlur(dst, dst, cv::Size(1, 21), 0, 7 / 2);
+	cv::normalize(periods, periods, 0, 1, cv::NORM_MINMAX);
+
+	std::vector<double> periodProbs((double*)periods.data, ((double*)periods.data) + dst.size().height);
+
+	// finding the peak
+	minV = INFINITY; int minPos = 0;
+	for (int i = max<int>(1,periodProbs.size()/10); i < periodProbs.size(); i++) {
+		double v = periodProbs[i];
+		if (v > periodProbs[i - 1]) { continue; }
+		if (v < minV) { minV = v; minPos = i; }
+	}
+	int bpmV = 60 * sampleRate /(minPos*(fftSize/2));
+	std::cout << bpmV << std::endl;
+
+	// displaying the periodicity diagram
+	int ratio = 2;
+	cv::Mat graph(cv::Size(ratio * (periods.size().height+1), 512), CV_8UC3);
+	for (int i = 1; i < periods.size().height; i++) {
+		cv::line(graph,
+			{ ratio * i, int(graph.size().height * periodProbs[i-1]) },
+			{ ratio * (i+1), int(graph.size().height * periodProbs[i]) },
+			{ 255, 255, 255 });
+	}
+	cv::Point bestPt = { ratio * minPos, int(graph.size().height*minV) };
+	cv::circle(graph, bestPt, 2 * ratio, { 255 });
+	std::stringstream ss; ss << bpmV << " BPM";
+	cv::putText(graph, ss.str(), { bestPt.x + 3 * ratio, bestPt.y }, cv::FONT_HERSHEY_PLAIN, 1, { 255 });
+	cv::imshow("period probabilities", graph); cv::waitKey(1000);
+
+	// exporting the correlation diagram
+	cv::normalize(dst, dst, 0, 1, cv::NORM_MINMAX);
+	dst.convertTo(dst, CV_8U, 255);
+	cv::applyColorMap(dst, dst, cv::COLORMAP_HOT);
+	cv::imwrite("../../data/corr.png", dst); // HACK : fileName
+
+	return bpmV;
+}
+
+std::vector<double> descriptor(const Audio& src) {
+
+	std::vector<double> dst;
+	return dst;
+};

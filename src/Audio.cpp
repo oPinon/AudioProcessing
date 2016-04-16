@@ -135,7 +135,7 @@ Audio::Audio(char* fileName) {
 	avformat_close_input(&formatContext);
 }
 
-void Audio::write(const char *filename)
+void Audio::write(const char *filename) const
 {
 	register_all();
 

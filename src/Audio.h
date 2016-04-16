@@ -31,7 +31,9 @@ public :
 	// based on http://www.gamedev.net/topic/624876-how-to-read-an-audio-file-with-ffmpeg-in-c/?view=findpost&p=4940299
 	Audio(char* fileName);
 
-	void write(const char *filename);
+	void write(const char *filename) const;
 
-	void spectrogram(char* fileName, int fftSize = 512);
+	void spectrogram(char* fileName, int fftSize = 512) const;
+
+	int bpm() const;
 };
