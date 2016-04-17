@@ -38,7 +38,7 @@ void Audio::addFrame(const AVFrame* frame, AVSampleFormat format) {
 	}
 }
 
-Audio::Audio(char* fileName) {
+Audio::Audio(const char* fileName) {
 
 	register_all();
 
