@@ -215,13 +215,14 @@ void Audio::spectrogram(char* fileName, int fftSize) const {
 	cv::imwrite(fileName, dstCol);
 }
 
-double Audio::period() const {
+double Audio::period(double minPeriod, double maxPeriod) const {
 
 	bool display = true; // HACK : remove
 	std::string dispFolder = "../../data/BPM/";
 
 	// Computing the spectrogram
 	int fftSize = 512; // TODO : which size ?
+	std::cout << "Computing the spectrogram" << std::endl;
 	cv::Mat spectrogram = spect(this->samples, fftSize);
 	if (display) {
 		cv::Mat dst;
@@ -233,12 +234,13 @@ double Audio::period() const {
 	double timePerFrame = double(fftSize/2) / sampleRate; // time between each FFT
 
 	// Computing the correlation (only for the next frames)
-	double maxPeriod = 1; // in seconds
+	//double maxPeriod = 3; // in seconds
 	int nbCorr = maxPeriod / timePerFrame;
 	int nbFrames = spectrogram.size().width;
 	int w = nbFrames - nbCorr;
 	cv::Mat corr(cv::Size(w, nbCorr), CV_64FC1);
 	{
+		std::cout << "Correlation with next frames" << std::endl;
 		double* specP = (double*)spectrogram.data;
 		double* corrP = (double*)corr.data;
 		for (int frame = 0; frame < w; frame++) { // Similarity between each frame
@@ -266,6 +268,7 @@ double Audio::period() const {
 	// Averaging on the whole music (TODO : doesn't work if the rythm changes)
 	std::vector<double> values(nbCorr);
 	{
+		std::cout << "Averaging" << std::endl;
 		double* corrP = (double*)corr.data;
 		for (int i = 0; i < nbCorr; i++) {
 			double sum = 0;
@@ -284,9 +287,11 @@ double Audio::period() const {
 		for (double& d : values) { d = (d - minV) / (maxV - minV); }
 	}
 
+	// finding the period TODO : harmonics
 	double period;
 	{
-		double minPeriod = 0.1; // HACK
+		std::cout << "Computing the period : ";
+		//double minPeriod = 1.0; // HACK
 		double minV = INFINITY;
 		for (int i = 0; i < values.size(); i++) {
 			double v = values[i];
@@ -298,8 +303,10 @@ double Audio::period() const {
 				}
 			}
 		}
+		std::cout << period << " s" << std::endl;
 	}
 
+	// Plotting the period graph
 	if (display) {
 		int w = 1024; // display width
 		int h = 512, margin = 32;
@@ -337,8 +344,9 @@ double Audio::period() const {
 
 	// plotting the ticks on the graph
 	if (display) {
+		std::cout << "Exporting the period frames" << std::endl;
 		int fftS = 512;
-		cv::Mat spec = spect(samples, fftS);
+		cv::Mat spec = 0*spect(samples, fftS);
 		cv::pow(spec, 0.3, spec);
 		spec = colorMap(spec);
 		double ratio = period * sampleRate / fftS;
@@ -346,7 +354,7 @@ double Audio::period() const {
 		// displaying the offset as a video
 		int w = ratio, h = spec.size().height;
 		cv::VideoWriter video("../../data/BPM/ticks.avi",
-			cv::VideoWriter::fourcc('F', 'M', 'P', '4'), 60, cv::Size(w,h));
+			cv::VideoWriter::fourcc('I', 'Y', 'U', 'V'), 30, cv::Size(w,h));
 
 		// adding bars to it
 		for (int i = 0; ((i+1)*ratio) <= spec.size().width; i ++) {
@@ -365,7 +373,51 @@ double Audio::period() const {
 	}
 
 	// Correcting the error
+	{
+		// TODO
+	}
 
+
+	// Finding the song structure
+	{
+		std::cout << "Computing the song repetitions" << std::endl;
+
+		// retrieving each frame (i.e. period)
+		double ratio = period * sampleRate / fftSize;
+		int w = ratio, h = spectrogram.size().height;
+		std::vector<std::vector<double>> frames; // frames (one for each period)
+		for (int i = 0; ((i + 1)*ratio) <= spectrogram.size().width; i++) {
+			cv::Mat frame;
+			spectrogram(cv::Rect(i*ratio, 0, ratio, spectrogram.size().height))
+				.copyTo(frame);
+			//cv::resize(frame, frame, cv::Size(w, h), 0, 0, cv::INTER_AREA); // HACK
+			std::vector<double> values(w*h);
+			double* frameP = (double*) frame.data;
+			std::copy(frameP, frameP + w*h, values.data());
+			frames.push_back(values);
+		}
+
+		// comparing each fram to the other
+		int n = frames.size();
+		cv::Mat corres(cv::Size(n, n), CV_64FC1);
+		double* corrP = (double*)corres.data;
+		for (int i = 0; i < n; i++) {
+			auto& vec1 = frames[i];
+			for (int j = i + 1; j < n; j++) {
+				double sum = 0;
+				auto& vec2 = frames[j];
+				for (int k = 0; k < w*h; k++) {
+					double diff = vec1[k] - vec2[k];
+					sum += diff*diff;
+				}
+				corrP[i*n + j] = sqrt(sum / (w*h));
+				corrP[j*n + i] = sqrt(sum / (w*h));
+			}
+		}
+		//cv::pow(corres, 0.4, corres);
+		cv::normalize(corres,corres, 0, 1, cv::NORM_MINMAX);
+		cv::imwrite(dispFolder + "songStructure.png", colorMap(corres));
+	}
 
 	return period;
 }
