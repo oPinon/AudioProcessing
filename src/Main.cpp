@@ -1,35 +1,64 @@
 
 #include <iostream>
 #include "Audio.h"
-#include "Processing.h"
+#include "STFT.h"
 
-#include <opencv2\opencv.hpp>
+#include "kiss_fft.h"
+
+struct LowPass : STFT<double> {
+
+	LowPass(int fftSize = 512) : STFT<double>(fftSize) {};
+
+	std::vector<double> process(const std::vector<double>& src) {
+		
+		int n = src.size();
+
+		// creating coeffficients
+		kiss_fft_cfg cfg = kiss_fft_alloc(n, false, 0, 0);
+		kiss_fft_cfg cfgI = kiss_fft_alloc(n, true, 0, 0);
+
+		std::vector<kiss_fft_cpx> input(n), output(n);
+		for (int i = 0; i < n; i++) {
+			input[i] = { (kiss_fft_scalar)src[i] , 0 };
+		}
+
+		// forward FFT
+		kiss_fft(cfg, input.data(), output.data());
+
+		// filtering the frequencies
+		for (int f = 0; f < 0.99*n / 2; f++) {
+			output[n/2-f] = { 0, 0 };
+			output[n/2+f] = { 0, 0 };
+		}
+
+		// backward FFT
+		kiss_fft(cfgI, output.data(), input.data());
+
+		std::vector<double> dst(n);
+		for (int i = 0; i < n; i++) {
+			dst[i] = input[i].r / src.size();
+		}
+
+		// freeing coefficients
+		kiss_fft_free(cfg);
+		kiss_fft_free(cfgI);
+
+		return dst;
+	}
+};
 
 void main(int argc, char* argv[]) {
 
-	if (argc < 2) {
-		std::cout << "Enter an .mp3 file as input" << std::endl;
-		return;
-	}
-
-	//Audio src(argv[1]);
-	Audio src("../../data/voice.mp3");
-	int bpm = src.bpm();
-
+	Audio src("../../data/src.mp3");
+	LowPass stft(4096);
 	Audio dst;
-	int n = 20000;
-	for (int i = 0; i < n; i++) {
-		double t = double(i) / n;
-		double v =  64 * sin(440 * i * 2 * 3.14 / dst.sampleRate)
-			* t * exp(-30*t);
-		dst.samples.push_back(v);
-	}
-
-	for (int i = 0; i < src.samples.size(); i += src.sampleRate * 60 / bpm) {
-		for (int j = 0; j < dst.samples.size(); j++) {
-			if (i + j >= src.samples.size()) { break; }
-			src.samples[i + j] = 0.5*src.samples[i + j] +0.5*dst.samples[j];
+	int step = 47;
+	for (int i = 0; i <= src.samples.size() - step; i += step) {
+		stft.addSamples(src.samples.data() + i, step);
+		auto out = stft.getSamples(step);
+		for (int j = 0; j < out.size(); j++) {
+			dst.samples.push_back(out[j]);
 		}
 	}
-	src.write("../../data/dst.mp3");
+	dst.write("../../data/dst.mp3");
 }

@@ -1,5 +1,7 @@
 #include "STFT.h"
 
+//#define _DEBUG 1
+
 template<typename T>
 int CircularBuffer<T>::size() {
 	return _size;
@@ -35,23 +37,31 @@ inline T & CircularBuffer<T>::operator[](int i)
 	return values[pos];
 }
 
-STFT::STFT(int fftSize) : fftSize(fftSize), input(4*fftSize), output(4*fftSize) {
+template<typename T>
+STFT<T>::STFT(int fftSize, int bufferSize) : fftSize(fftSize) {
+	bufferSize = std::max<int>(bufferSize, 2*fftSize);
+	input = CircularBuffer<T>(bufferSize);
+	output = CircularBuffer<Sample>(bufferSize);
 	for (int i = 0; i < 2*fftSize; i++) {
-		output.push_back({ 0, 1E-32 }); // TODO : std::limit
+		output.push_back({ 0, 1 }); // TODO : std::limit
 	}
 }
 
-std::vector<double> STFT::process(const std::vector<double>& src) {
+
+template<typename T>
+std::vector<T> STFT<T>::process(const std::vector<T>& src) {
 
 	return src;
 }
 
-double STFT::window(double x) {
+template<typename T>
+double STFT<T>::window(double x) {
 	return 0.5 + 0.5*cos(3.14159*x); // Hanning
 }
 
 // computing overlapping FFTs
-void STFT::computeFFT() {
+template<typename T>
+void STFT<T>::computeFFT() {
 
 	std::vector<double> values;
 
@@ -79,7 +89,8 @@ void STFT::computeFFT() {
 	}
 }
 
-void STFT::addSamples(double* samples, int nbSamples) {
+template<typename T>
+void STFT<T>::addSamples(T* samples, int nbSamples) {
 
 	for (int i = 0; i < nbSamples; i++) {
 		input.push_back(samples[i]);
@@ -89,13 +100,14 @@ void STFT::addSamples(double* samples, int nbSamples) {
 
 #include <iostream>
 
-std::vector<double> STFT::getSamples(int nbSamples) {
+template<typename T>
+std::vector<T> STFT<T>::getSamples(int nbSamples) {
 	
 	if (nbSamples > output.size()) {
 		std::cerr << "reading " << nbSamples << " out of a "
 			<< output.size() << " buffer" << std::endl; throw 1;
 	}
-	std::vector<double> dst(nbSamples);
+	std::vector<T> dst(nbSamples);
 	for (int i = 0; i < nbSamples; i++) { dst[i] = output[i].getValue(); }
 	output.pop(nbSamples);
 	return dst;
@@ -112,10 +124,10 @@ void testSTFT() {
 
 	//srand(time(NULL));
 	std::cout << "Testing the STFT :" << std::endl;
-	STFT stft(32);
+	STFT<double> stft(32);
 
 	// random input
-	std::vector<double> input(256);
+	std::vector<double> input(512);
 	input[0] = 1;
 	for (int i = 1; i < input.size(); i++) {
 		input[i] = 1 - 2 * double(rand()) / RAND_MAX;

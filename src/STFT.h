@@ -16,24 +16,27 @@ public:
 	T& operator[](int i);
 };
 
+template<typename T>
 class STFT {
 
 	struct Sample {
-		double value, // value of the sample
-			coeff; // coefficient to normalize with
-		double getValue() { return value / coeff; }
+		T value; // value of the sample
+		double coeff; // coefficient to normalize with
+		T getValue() { return value / coeff; }
 	};
 
 	int fftSize;
 public: // HACK
-	CircularBuffer<double> input; // samples to be processed by FFTs
+	CircularBuffer<T> input; // samples to be processed by FFTs
 	CircularBuffer<Sample> output; // processed samples
 	void computeFFT(); // computes overlapping FFTs from/to the 2 buffers
 	double window(double x); // window coefficient for x in [-1;1]
-	virtual std::vector<double> STFT::process(const std::vector<double>& src); // process an FFT
+	virtual std::vector<T> STFT::process(const std::vector<T>& src); // process an FFT
 
 public:
-	STFT(int fftSize = 512);
-	void addSamples(double* samples, int nbSamples);
-	std::vector<double> getSamples(int nbSamples);
+	STFT(int fftSize = 512,
+		int bufferSize = 0 // equals to 2*fftSize by default
+	);
+	void addSamples(T* samples, int nbSamples);
+	std::vector<T> getSamples(int nbSamples);
 };
