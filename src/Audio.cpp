@@ -64,8 +64,8 @@ Audio::Audio(const char* fileName) {
 	}
 
 	AVStream* audioStream = formatContext->streams[streamIndex];
-	AVCodecContext* codecContext = audioStream->codec;
-	codecContext->codec = cdc;
+	AVCodecContext* codecContext = avcodec_alloc_context3(cdc); // HACK ?
+	codecContext->sample_rate = audioStream->codecpar->sample_rate;
 
 	// opening the codec
 	if (avcodec_open2(codecContext, codecContext->codec, NULL) != 0) {
@@ -94,25 +94,15 @@ Audio::Audio(const char* fileName) {
 				// Try to decode the packet into a frame
 				// Some frames rely on multiple packets, so we have to make sure the frame is finished before
 				// we can use it
-				int gotFrame = 0;
-				int result = avcodec_decode_audio4(codecContext, frame, &gotFrame, &packet);
-
-				if (result >= 0 && gotFrame) {
-					packet.size -= result;
-					packet.data += result;
-
-					// We now have a fully decoded audio frame
-					// append it to the audio data
+				if (avcodec_send_packet(codecContext, &packet) == 0 &&
+					avcodec_receive_frame(codecContext, frame) == 0) {
 					addFrame(frame, codecContext->sample_fmt);
 				}
-				else {
-					packet.size = 0;
-					packet.data = nullptr;
-				}
+				packet.size = 0;
 			}
 		}
 
-		av_free_packet(&packet);
+		av_packet_unref(&packet);
 	}
 
 	// Some codecs will cause frames to be buffered up in the decoding process. If the CODEC_CAP_DELAY flag
@@ -121,10 +111,8 @@ Audio::Audio(const char* fileName) {
 	{
 		av_init_packet(&packet);
 		// Decode all the remaining frames in the buffer, until the end is reached
-		int gotFrame = 0;
-		while (avcodec_decode_audio4(codecContext, frame, &gotFrame, &packet) >= 0 && gotFrame)
-		{
-			// We now have a fully decoded audio frame
+		while (avcodec_send_packet(codecContext, &packet) == 0 &&
+			avcodec_receive_frame(codecContext, frame) == 0) {
 			addFrame(frame, codecContext->sample_fmt);
 		}
 	}
