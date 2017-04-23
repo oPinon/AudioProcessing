@@ -1,6 +1,8 @@
 #include "Audio.h"
 
 #include <iostream>
+#include <assert.h>
+#include <fstream>
 
 bool av_registered = false;
 void register_all() {

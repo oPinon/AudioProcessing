@@ -9,8 +9,6 @@ extern "C"
 };
 
 #include <vector>
-#include <assert.h>
-#include <fstream>
 
 typedef unsigned int uint;
 

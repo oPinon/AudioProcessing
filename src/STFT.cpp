@@ -1,5 +1,8 @@
 #include "STFT.h"
 
+template<typename A, typename B>
+inline A max(const A& a, const B& b) { return a < b ? b : a; }
+
 //#define _DEBUG 1
 
 template<typename T>
@@ -39,7 +42,7 @@ inline T & CircularBuffer<T>::operator[](int i)
 
 template<typename T>
 STFT<T>::STFT(int fftSize, int bufferSize) : fftSize(fftSize) {
-	bufferSize = std::max<int>(bufferSize, 2*fftSize);
+	bufferSize = max(bufferSize, 2*fftSize);
 	input = CircularBuffer<T>(bufferSize);
 	output = CircularBuffer<Sample>(bufferSize);
 	for (int i = 0; i < 2*fftSize; i++) {
@@ -113,8 +116,7 @@ std::vector<T> STFT<T>::getSamples(int nbSamples) {
 	return dst;
 }
 
-template<typename T>
-T min(const T& a, const T& b) { return a < b ? a : b; }
+#ifdef AUDIOPROCESSING_USE_OPENCV
 
 #include <ctime>
 
@@ -190,3 +192,14 @@ void testSTFT() {
 	std::cout << "everything OK (" << input.size() << " samples identical)" << std::endl;
 	cv::waitKey();
 }
+#else
+
+// HACK : just to force template compilation
+void test()
+{
+	STFT<double> s(32);
+	s.addSamples(NULL, 0);
+	s.getSamples(0);
+}
+
+#endif
