@@ -42,6 +42,8 @@ add_executable(
 	${SrcDir}/Audio.cpp
 	${SrcDir}/STFT.h
 	${SrcDir}/STFT.cpp
+	${SrcDir}/Processing.h
+	${SrcDir}/Processing.cpp
 )
 
 target_link_libraries(

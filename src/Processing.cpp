@@ -3,8 +3,6 @@
 
 #include "kiss_fft.h"
 
-#include <opencv2\opencv.hpp>
-
 template<typename T>
 T min(const T& a, const T& b) { return a < b ? a : b; }
 template<typename T>
@@ -123,6 +121,10 @@ Audio vocoder(const Audio& modulator, const Audio& frequencies, int nbBands) {
 
 	return dst;
 }
+
+#ifdef AUDIOPROCESSING_USE_OPENCV
+
+#include <opencv2\opencv.hpp>
 
 cv::Mat spect(const std::vector<double>& samples, int fftSize) {
 
@@ -462,3 +464,5 @@ std::vector<double> descriptor(const Audio& src) {
 	}*/
 	return dst;
 };
+
+#endif
