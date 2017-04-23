@@ -2,6 +2,8 @@
 
 template<typename A, typename B>
 inline A max(const A& a, const B& b) { return a < b ? b : a; }
+template<typename A, typename B>
+inline A min(const A& a, const B& b) { return a < b ? a : b; }
 
 //#define _DEBUG 1
 
