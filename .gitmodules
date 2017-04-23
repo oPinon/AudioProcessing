@@ -1,0 +1,3 @@
+[submodule "deps/kissfft"]
+	path = deps/kissfft
+	url = https://github.com/itdaniher/kissfft.git
