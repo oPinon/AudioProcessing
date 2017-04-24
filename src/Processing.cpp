@@ -204,7 +204,7 @@ cv::Mat colorMap(const cv::Mat& src) {
 	return dstCol;
 }
 
-void Audio::spectrogram(char* fileName, int fftSize) const {
+void Audio::spectrogram(const char* fileName, int fftSize) const {
 
 	cv::Mat dst = spect(this->samples, fftSize);
 

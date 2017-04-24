@@ -31,7 +31,7 @@ public :
 
 	void write(const char *filename) const;
 
-	void spectrogram(char* fileName, int fftSize = 512) const;
+	void spectrogram(const char* fileName, int fftSize = 512) const;
 
 	double period(double minPeriod = 0.2, double maxPeriod = 3) const;
 };
