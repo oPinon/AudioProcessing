@@ -1,12 +1,20 @@
 cmake_minimum_required(VERSION 2.4)
 project(AudioProcessing)
 
+if(NOT WIN32)
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+endif()
+
 option( WithOpenCV "Use the features that depend on OpenCV" OFF )
 set( SrcDir ${CMAKE_CURRENT_SOURCE_DIR}/src )
 
 set( FFMPEGDir "" CACHE PATH "Directory of the compiled FFMPEG library" )
-if( FFMPEGDir STREQUAL "" )
-	message( SEND_ERROR "Please specify the variable FFMPEGDir" )
+if( WIN32 )
+	if( FFMPEGDir STREQUAL "" )
+		message( SEND_ERROR "Please specify the variable FFMPEGDir" )
+	endif()
+else()
+	set( FFMPEGDir "/" )
 endif()
 
 set( KissFFTDir ${CMAKE_CURRENT_SOURCE_DIR}/deps/kissfft )
@@ -48,16 +56,15 @@ add_executable(
 
 target_link_libraries(
 	AudioProcessing
-	avcodec.lib
-	avdevice.lib
-	avfilter.lib
-	avformat.lib
-	avutil.lib
-	postproc.lib
-	swresample.lib
-	swscale.lib
+	avcodec
+	avdevice
+	avfilter
+	avformat
+	avutil
+	swresample
+	swscale
 )
 
 if( WithOpenCV )
-	target_link_libraries( AudioProcessing opencv_world310.lib )
+	target_link_libraries( AudioProcessing opencv_world310 )
 endif()

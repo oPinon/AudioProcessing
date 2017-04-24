@@ -1,5 +1,7 @@
 #include "STFT.h"
 
+#include <math.h>
+
 template<typename A, typename B>
 inline A max(const A& a, const B& b) { return a < b ? b : a; }
 template<typename A, typename B>

@@ -31,7 +31,7 @@ public: // HACK
 	CircularBuffer<Sample> output; // processed samples
 	void computeFFT(); // computes overlapping FFTs from/to the 2 buffers
 	double window(double x); // window coefficient for x in [-1;1]
-	virtual std::vector<T> STFT::process(const std::vector<T>& src); // process an FFT
+	virtual std::vector<T> process(const std::vector<T>& src); // process an FFT
 
 public:
 	STFT(int fftSize = 512,

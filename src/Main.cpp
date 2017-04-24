@@ -47,7 +47,7 @@ struct LowPass : STFT<double> {
 	}
 };
 
-void main(int argc, char* argv[]) {
+int main(int argc, char* argv[]) {
 
 	Audio src("../../data/src.mp3");
 	LowPass stft(4096);
@@ -61,4 +61,5 @@ void main(int argc, char* argv[]) {
 		}
 	}
 	dst.write("../../data/dst.mp3");
+	return 0;
 }
