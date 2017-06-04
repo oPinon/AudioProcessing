@@ -66,12 +66,12 @@ int main(int argc, char* argv[]) {
 
 	for (int i = 1; i < argc; i++)
 	{
-		if ( strcmpi( argv[i], "-i" ) == 0 && i + 1 < argc)
+		if ( _strcmpi( argv[i], "-i" ) == 0 && i + 1 < argc)
 			inputFile = argv[++i];
 		else
-		if(strcmpi(argv[i], "-o" ) == 0 && i + 1 < argc )
+		if( _strcmpi(argv[i], "-o" ) == 0 && i + 1 < argc )
 			outputFile = argv[++i];
-		if ( strcmpi( argv[i], "-v" ) == 0 )
+		if( _strcmpi( argv[i], "-v" ) == 0 )
 			verbose = true;
 	}
 	if (inputFile == NULL)

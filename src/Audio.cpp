@@ -125,7 +125,7 @@ Audio::Audio(const char* fileName) {
 	avformat_close_input(&formatContext);
 }
 
-void Audio::write(const char *filename) const
+void Audio::writeAudio(const char *filename, AVCodecID codecId) const
 {
 	register_all();
 
@@ -137,7 +137,7 @@ void Audio::write(const char *filename) const
 	int buffer_size;
 	uint16_t *samplesBuff;
 
-	codec = avcodec_find_encoder(AV_CODEC_ID_MP3);
+	codec = avcodec_find_encoder(codecId);
 	if (!codec) {
 		fprintf(stderr, "Codec not found\n");
 		return;
@@ -235,4 +235,20 @@ void Audio::write(const char *filename) const
 	av_frame_free(&frame);
 	avcodec_close(c);
 	av_free(c);
+}
+
+void Audio::write(const char* fileName) const
+{
+	const std::string fN = fileName;
+	size_t dot = fN.rfind('.');
+	const std::string ext = fN.substr(dot + 1);
+	
+	if (_strcmpi(ext.data(), "mp3") == 0)
+		this->writeAudio(fileName, AV_CODEC_ID_MP3);
+	else
+	if (_strcmpi(ext.data(), "wav") == 0)
+		this->writeAudio(fileName, AV_CODEC_ID_WAVPACK);
+	else
+		std::cerr << "Error : couldn't find the format of \""
+			<< ext.data() << "\" (for " << fN.data() << " )" << std::endl;
 }
