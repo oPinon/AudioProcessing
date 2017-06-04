@@ -2,6 +2,7 @@
 
 
 #include "kiss_fft.h"
+#include <limits>
 
 template<typename T>
 T min(const T& a, const T& b) { return a < b ? a : b; }
@@ -173,15 +174,15 @@ cv::Mat spect(const std::vector<double>& samples, int fftSize) {
 
 void Audio::writeImage(const char *fileName) const
 {
-	size_t fftSize = 4096;
+	size_t fftSize = 1024;
 
 	// FFT parameters
 	auto cfg = kiss_fft_alloc(fftSize, false, 0, 0);
 
 	// Destination image
-	int nbFFT = samples.size() / fftSize * 2;
-	cv::Mat dst(cv::Size(fftSize, nbFFT), CV_64FC3);
-	double* dstP = (double*)dst.data;
+	int nbFFT = samples.size() / fftSize * 2 - 1;
+	cv::Mat dst(cv::Size(fftSize, nbFFT), CV_16UC3);
+	uint16_t* dstP = (uint16_t*)dst.data;
 
 	for (int i = 0; i < nbFFT; i++)
 	{
@@ -200,14 +201,60 @@ void Audio::writeImage(const char *fileName) const
 		{
 			size_t y = j;
 			size_t x = i;
-			dstP[3 * (fftSize * x + y) + 0] = 255.0 * output[j].r;
-			dstP[3 * (fftSize * x + y) + 1] = 255.0 * output[j].i;
+			const uint16_t maxV = std::numeric_limits<uint16_t>::max();
+			dstP[3 * (fftSize * x + y) + 0] = ( maxV * output[j].r / sqrt(fftSize) ) / 2 + maxV / 2;
+			dstP[3 * (fftSize * x + y) + 1] = ( maxV * output[j].i / sqrt(fftSize) ) / 2 + maxV / 2;
 			dstP[3 * (fftSize * x + y) + 2] = 0;
 		}
 	}
 
-	cv::transpose(dst, dst);
-	cv::imwrite(fileName, dst / sqrt(fftSize) );
+	cv::imwrite(fileName, dst );
+}
+
+void Audio::readImage(const char *fileName)
+{
+	cv::Mat src = cv::imread(fileName, cv::IMREAD_ANYDEPTH | cv::IMREAD_ANYCOLOR );
+	if (src.type() != CV_16UC3)
+	{
+		std::cerr << "Audio::readImage : image type isn't 16UC3 (it has "
+			<< src.channels() << " channels and a precision of " << src.depth() << ")" << std::endl;
+		return;
+	}
+
+	size_t fftSize = src.size().width;
+	this->samples = std::vector<double>( ( src.size().height + 1 ) * fftSize / 2, 0);
+	std::vector<double> coeffs(this->samples.size(), 0);
+
+	// FFT parameters
+	auto cfg = kiss_fft_alloc(fftSize, false, 0, 0);
+
+	const uint16_t* srcP = (uint16_t*)src.data;
+
+	for( size_t i = 0; i < src.size().height; i++ )
+	{
+		std::vector<kiss_fft_cpx> input(fftSize), output(fftSize);
+		for( size_t j = 0; j < fftSize; j++ )
+		{
+			double coeff = window(double(j) / fftSize);
+			coeffs[(i * fftSize) / 2 + j] += coeff * coeff;
+			input[j].r = srcP[3 * (fftSize * i + j) + 0];
+			input[j].i = srcP[3 * (fftSize * i + j) + 1];
+		}
+
+		kiss_fft(cfg, input.data(), output.data());
+
+		for (int j = 0; j < fftSize; j++)
+		{
+			const uint16_t maxV = std::numeric_limits<uint16_t>::max();
+			this->samples[(i * fftSize) / 2 + j] += ( output[j].r - maxV / 2 ) / maxV / sqrt(fftSize);
+		}
+	}
+
+	/*
+	for (size_t i = 0; i < this->samples.size(); i++)
+		if( coeffs[i] > 1E-3 )
+			this->samples[i] /= coeffs[i];
+	*/
 }
 
 // colors an image in [0;1]

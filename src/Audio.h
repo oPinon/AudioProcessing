@@ -21,14 +21,15 @@ class Audio {
 public :
 
 	std::vector<double> samples;
-	uint sampleRate;
+	uint sampleRate = 44100;
 
-	Audio() : sampleRate(44100) {}
+	Audio() {}
 
 	// reading an audio file
 	// based on http://www.gamedev.net/topic/624876-how-to-read-an-audio-file-with-ffmpeg-in-c/?view=findpost&p=4940299
 	Audio(const char* fileName);
 
+	void readImage(const char* fileName);
 	void writeImage(const char *fileName) const;
 	void writeAudio(const char *fileName, AVCodecID) const;
 	void write(const char *filename) const;

@@ -106,6 +106,12 @@ int main(int argc, char* argv[]) {
 		if( outputFile )
 			std::cout << "done. Writing " << outputFile << std::endl;
 		dst.write(outputFile);
+
+		Audio back;
+		std::cout << "reading back " << outputFile << " ..." << std::endl;
+		back.readImage(outputFile);
+		std::cout << "done" << std::endl;
+		back.write( (std::string(outputFile) + ".mp3").data() );
 	}
 	return 0;
 }
