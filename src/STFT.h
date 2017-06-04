@@ -37,6 +37,7 @@ public:
 	STFT(int fftSize = 512,
 		int bufferSize = 0 // equals to 2*fftSize by default
 	);
-	void addSamples(T* samples, int nbSamples);
+	void addSamples(const T* samples, int nbSamples);
 	std::vector<T> getSamples(int nbSamples);
+	std::vector<T> getSamples() { return getSamples(this->output.size()); }
 };

@@ -97,7 +97,7 @@ void STFT<T>::computeFFT() {
 }
 
 template<typename T>
-void STFT<T>::addSamples(T* samples, int nbSamples) {
+void STFT<T>::addSamples(const T* samples, int nbSamples) {
 
 	for (int i = 0; i < nbSamples; i++) {
 		input.push_back(samples[i]);

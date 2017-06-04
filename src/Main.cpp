@@ -92,7 +92,7 @@ int main(int argc, char* argv[]) {
 		Audio src(inputFile);
 		if( verbose )
 			std::cout << "read " << inputFile << "; filtering.." << std::endl;
-		LowPass stft(4096);
+		/*LowPass stft(4096);
 		Audio dst;
 		int step = 47;
 		for (int i = 0; i <= src.samples.size() - step; i += step) {
@@ -101,7 +101,8 @@ int main(int argc, char* argv[]) {
 			for (int j = 0; j < out.size(); j++) {
 				dst.samples.push_back(out[j]);
 			}
-		}
+		}*/
+		Audio dst = src;
 		if( outputFile )
 			std::cout << "done. Writing " << outputFile << std::endl;
 		dst.write(outputFile);

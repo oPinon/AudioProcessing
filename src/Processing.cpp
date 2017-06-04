@@ -171,6 +171,45 @@ cv::Mat spect(const std::vector<double>& samples, int fftSize) {
 	return dst;
 }
 
+void Audio::writeImage(const char *fileName) const
+{
+	size_t fftSize = 4096;
+
+	// FFT parameters
+	auto cfg = kiss_fft_alloc(fftSize, false, 0, 0);
+
+	// Destination image
+	int nbFFT = samples.size() / fftSize * 2;
+	cv::Mat dst(cv::Size(fftSize, nbFFT), CV_64FC3);
+	double* dstP = (double*)dst.data;
+
+	for (int i = 0; i < nbFFT; i++)
+	{
+		// temporal input (weighted)
+		std::vector<kiss_fft_cpx> input(fftSize), output(fftSize);
+		for (int j = 0; j < fftSize; j++)
+		{
+			double coeff = window(double(j) / fftSize);
+			input[j] = { kiss_fft_scalar(coeff * samples[( i * fftSize ) / 2  + j]), 0 };
+		}
+
+		// forward FFT
+		kiss_fft(cfg, input.data(), output.data());
+
+		for (int j = 0; j < fftSize; j++)
+		{
+			size_t y = j;
+			size_t x = i;
+			dstP[3 * (fftSize * x + y) + 0] = 255.0 * output[j].r;
+			dstP[3 * (fftSize * x + y) + 1] = 255.0 * output[j].i;
+			dstP[3 * (fftSize * x + y) + 2] = 0;
+		}
+	}
+
+	cv::transpose(dst, dst);
+	cv::imwrite(fileName, dst / sqrt(fftSize) );
+}
+
 // colors an image in [0;1]
 cv::Mat colorMap(const cv::Mat& src) {
 

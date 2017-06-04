@@ -248,6 +248,9 @@ void Audio::write(const char* fileName) const
 	else
 	if (_strcmpi(ext.data(), "wav") == 0)
 		this->writeAudio(fileName, AV_CODEC_ID_WAVPACK);
+	if (_strcmpi(ext.data(), "png" ) == 0 ||
+			_strcmpi(ext.data(), "jpg" ) == 0 )
+		this->writeImage( fileName );
 	else
 		std::cerr << "Error : couldn't find the format of \""
 			<< ext.data() << "\" (for " << fN.data() << " )" << std::endl;
