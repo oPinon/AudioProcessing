@@ -47,19 +47,64 @@ struct LowPass : STFT<double> {
 	}
 };
 
+void PrintHelp()
+{
+	std::cout << "Command line arguments are : " << std::endl;
+	std::cout << "-i <fileName> : (audio or image) src data" << std::endl;
+	std::cout << "-o <fileName> : (audio or image) dst data" << std::endl;
+	std::cout << "-v : enables verbose mode" << std::endl;
+}
+
 int main(int argc, char* argv[]) {
 
-	Audio src("../../data/src.mp3");
-	LowPass stft(4096);
-	Audio dst;
-	int step = 47;
-	for (int i = 0; i <= src.samples.size() - step; i += step) {
-		stft.addSamples(src.samples.data() + i, step);
-		auto out = stft.getSamples(step);
-		for (int j = 0; j < out.size(); j++) {
-			dst.samples.push_back(out[j]);
-		}
+	bool printHelp = false;
+	bool verbose = true;
+	const char* inputFile = NULL;
+	const char* outputFile = NULL;
+	if (argc == 1)
+		printHelp = true;
+
+	for (int i = 1; i < argc; i++)
+	{
+		if ( strcmpi( argv[i], "-i" ) == 0 && i + 1 < argc)
+			inputFile = argv[++i];
+		else
+		if(strcmpi(argv[i], "-o" ) == 0 && i + 1 < argc )
+			outputFile = argv[++i];
+		if ( strcmpi( argv[i], "-v" ) == 0 )
+			verbose = true;
 	}
-	dst.write("../../data/dst.mp3");
+	if (inputFile == NULL)
+	{
+		std::cerr << "missing input file" << std::endl;
+		printHelp = true;
+	}
+	if (outputFile == NULL)
+	{
+		std::cerr << "missing output file" << std::endl;
+		printHelp = true;
+	}
+
+	if (printHelp)
+		PrintHelp();
+	else
+	{
+		Audio src(inputFile);
+		if( verbose )
+			std::cout << "read " << inputFile << "; filtering.." << std::endl;
+		LowPass stft(4096);
+		Audio dst;
+		int step = 47;
+		for (int i = 0; i <= src.samples.size() - step; i += step) {
+			stft.addSamples(src.samples.data() + i, step);
+			auto out = stft.getSamples(step);
+			for (int j = 0; j < out.size(); j++) {
+				dst.samples.push_back(out[j]);
+			}
+		}
+		if( outputFile )
+			std::cout << "done. Writing " << outputFile << std::endl;
+		dst.write(outputFile);
+	}
 	return 0;
 }
